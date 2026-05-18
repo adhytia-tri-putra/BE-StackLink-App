@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  username        String   @unique @map("username")
+  name            String
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  bio             String?
+  avatar          String?
+  headline        String?
+  bgType          String   @default("solid") @map("bg_type")
+  bgColor         String   @default("#ffffff") @map("bg_color")
+  bgGradientStart String   @default("#ffffff") @map("bg_gradient_start")
+  bgGradientEnd   String   @default("#6366f1") @map("bg_gradient_end")
+  textColor       String   @default("#000000") @map("text_color")
+  buttonColor     String   @default("#6366f1") @map("button_color")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  links    Link[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Link {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  title     String
+  url       String
+  icon      String?
+  position  Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks LinkClick[]
+
+  @@map("links")
+}
+
+model LinkClick {
+  id         String   @id @default(cuid())
+  linkId     String   @map("link_id")
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  referrer   String?
+  deviceType String?  @map("device_type")
+  clickedAt  DateTime @default(now()) @map("clicked_at")
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@map("link_clicks")
+}
