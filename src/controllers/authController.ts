@@ -4,8 +4,9 @@ import { checkPassword, createUser, findUserByEmail, sanitizeUser } from "../ser
 import { createSession, deleteSession } from "../services/sessionService";
 import type { LoginInput, RegisterInput } from "../types/auth";
 import { createPasswordResetToken, resetPasswordWithToken } from "../services/passwordResetService";
-import { sendPasswordResetEmail } from "../services/emailService";
+import { sendEmailVerification, sendPasswordResetEmail } from "../services/emailService";
 import { getPrimaryFrontendUrl } from "../utils/env";
+import { createEmailVerificationToken, verifyEmailToken } from "../services/emailVerificationService";
 
 export async function register(
   req: Request<unknown, unknown, RegisterInput>,
@@ -33,11 +34,17 @@ export async function register(
       headline,
     });
 
+    const verificationToken = await createEmailVerificationToken(user.id);
+    const verificationUrl = `${getPrimaryFrontendUrl().replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    const sent = await sendEmailVerification(user.email, verificationUrl);
+    const developmentToken = !sent && process.env.NODE_ENV !== "production" ? verificationToken : undefined;
+
     return res.status(201).json({
       success: true,
-      message: "Register berhasil. Silakan login untuk mendapatkan token.",
+      message: "Register berhasil. Verifikasi email sebelum login.",
       data: {
         user,
+        ...(developmentToken ? { developmentToken } : {}),
       },
     });
   } catch (error) {
@@ -75,6 +82,9 @@ export async function login(
         message: "Email atau password salah.",
       });
     }
+    if (!userRecord.emailVerifiedAt) {
+      return res.status(403).json({ success: false, message: "Verifikasi email terlebih dahulu sebelum login." });
+    }
 
     const user = sanitizeUser(userRecord);
     const token = createAccessToken(user);
@@ -95,6 +105,22 @@ export async function login(
         token,
       },
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function verifyEmail(
+  req: Request<unknown, unknown, { token?: unknown }>,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> {
+  try {
+    const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+    if (!token || !(await verifyEmailToken(token))) {
+      return res.status(400).json({ success: false, message: "Token verifikasi tidak valid atau sudah kedaluwarsa." });
+    }
+    return res.status(200).json({ success: true, message: "Email berhasil diverifikasi. Silakan login." });
   } catch (error) {
     return next(error);
   }

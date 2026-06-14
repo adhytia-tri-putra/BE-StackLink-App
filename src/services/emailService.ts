@@ -29,3 +29,16 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
 
   return true;
 }
+
+export async function sendEmailVerification(email: string, verificationUrl: string): Promise<boolean> {
+  const transport = getTransport();
+  if (!transport) return false;
+  await transport.sendMail({
+    from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: "Verify your StackLink email",
+    text: `Verify your StackLink email within 24 hours: ${verificationUrl}`,
+    html: `<p>Welcome to StackLink.</p><p><a href="${verificationUrl}">Verify your email</a></p><p>This link expires in 24 hours.</p>`,
+  });
+  return true;
+}
