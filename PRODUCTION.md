@@ -17,6 +17,7 @@
 ## Custom domains
 
 Point the user's hostname to the deployed frontend with a CNAME or provider-specific apex record. Add the hostname in Publishing settings. TLS must be issued by the frontend hosting provider.
+Set `CUSTOM_DOMAIN_TARGET` to the canonical frontend hostname so Publishing diagnostics can verify the CNAME.
 
 ## Backup policy
 

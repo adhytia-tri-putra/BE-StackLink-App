@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { findUserById, sanitizeUser, updateUser } from "../services/userService";
 import type { UpdateProfileInput, UpdateThemeInput } from "../types/user";
 import prisma from "../config/prisma";
+import { resolve4, resolveCname } from "node:dns/promises";
 import { deleteStoredAvatar, storeAvatar } from "../services/avatarStorageService";
 
 interface ProfileBody {
@@ -326,6 +327,38 @@ export async function updatePublishingSettings(
     if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
       return res.status(409).json({ success: false, message: "Custom domain sudah digunakan akun lain." });
     }
+    return next(error);
+  }
+}
+
+export async function getPublishingDiagnostics(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const userId = Number(req.user?.sub);
+    if (!userId) return res.status(401).json({ success: false, message: "Token tidak valid." });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: "User tidak ditemukan." });
+
+    const expectedTarget = process.env.CUSTOM_DOMAIN_TARGET?.toLowerCase().replace(/\.$/, "") || null;
+    let domain = { configured: Boolean(user.customDomain), verified: false, records: [] as string[], expectedTarget };
+    if (user.customDomain) {
+      const cname = await resolveCname(user.customDomain).catch(() => []);
+      const addresses = await resolve4(user.customDomain).catch(() => []);
+      const records = [...cname.map((item) => item.toLowerCase().replace(/\.$/, "")), ...addresses];
+      domain = { configured: true, verified: expectedTarget ? records.includes(expectedTarget) : records.length > 0, records, expectedTarget };
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        domain,
+        pixels: {
+          googleAnalytics: { configured: Boolean(user.googleAnalyticsId), valid: !user.googleAnalyticsId || /^G-[A-Z0-9]+$/i.test(user.googleAnalyticsId) },
+          meta: { configured: Boolean(user.metaPixelId), valid: !user.metaPixelId || /^\d{5,30}$/.test(user.metaPixelId) },
+          tiktok: { configured: Boolean(user.tiktokPixelId), valid: !user.tiktokPixelId || /^[A-Z0-9]{5,30}$/i.test(user.tiktokPixelId) },
+        },
+      },
+    });
+  } catch (error) {
     return next(error);
   }
 }
