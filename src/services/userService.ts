@@ -36,6 +36,9 @@ export function sanitizeUser(user: User): SanitizedUser {
     planStatus: user.planStatus,
     role: user.role,
     suspendedAt: user.suspendedAt?.toISOString() || null,
+    themeTemplate: user.themeTemplate,
+    fontFamily: user.fontFamily,
+    backgroundImage: user.backgroundImage,
   };
 }
 

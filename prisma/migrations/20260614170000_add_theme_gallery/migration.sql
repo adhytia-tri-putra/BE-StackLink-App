@@ -1,0 +1,3 @@
+ALTER TABLE "users" ADD COLUMN "theme_template" TEXT NOT NULL DEFAULT 'SOFT';
+ALTER TABLE "users" ADD COLUMN "font_family" TEXT NOT NULL DEFAULT 'SYSTEM';
+ALTER TABLE "users" ADD COLUMN "background_image" TEXT;

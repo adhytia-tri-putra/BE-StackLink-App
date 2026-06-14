@@ -31,6 +31,9 @@ export interface SanitizedUser {
   planStatus: string;
   role: string;
   suspendedAt: string | null;
+  themeTemplate: string;
+  fontFamily: string;
+  backgroundImage: string | null;
 }
 
 export interface UpdateProfileInput {
@@ -47,6 +50,9 @@ export interface UpdateThemeInput {
   bgGradientEnd?: string;
   textColor?: string;
   buttonColor?: string;
+  themeTemplate?: string;
+  fontFamily?: string;
+  backgroundImage?: string | null;
 }
 
 export interface ThemeData {
@@ -56,4 +62,7 @@ export interface ThemeData {
   bgGradientEnd: string;
   textColor: string;
   buttonColor: string;
+  themeTemplate: string;
+  fontFamily: string;
+  backgroundImage: string | null;
 }

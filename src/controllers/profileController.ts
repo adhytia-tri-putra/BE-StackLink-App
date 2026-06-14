@@ -20,6 +20,9 @@ interface ThemeBody {
   bgGradientEnd?: unknown;
   textColor?: unknown;
   buttonColor?: unknown;
+  themeTemplate?: unknown;
+  fontFamily?: unknown;
+  backgroundImage?: unknown;
 }
 
 interface PublishingBody {
@@ -52,6 +55,9 @@ function sanitizeThemeInput(body: ThemeBody): UpdateThemeInput {
   if (body.bgGradientEnd !== undefined) payload.bgGradientEnd = String(body.bgGradientEnd).trim();
   if (body.textColor !== undefined) payload.textColor = String(body.textColor).trim();
   if (body.buttonColor !== undefined) payload.buttonColor = String(body.buttonColor).trim();
+  if (body.themeTemplate !== undefined) payload.themeTemplate = String(body.themeTemplate).trim().toUpperCase();
+  if (body.fontFamily !== undefined) payload.fontFamily = String(body.fontFamily).trim().toUpperCase();
+  if (body.backgroundImage !== undefined) payload.backgroundImage = body.backgroundImage ? String(body.backgroundImage).trim() : null;
 
   return payload;
 }
@@ -119,6 +125,9 @@ export async function getMyPreviewProfile(
         bgGradientEnd: true,
         textColor: true,
         buttonColor: true,
+        themeTemplate: true,
+        fontFamily: true,
+        backgroundImage: true,
         links: {
           orderBy: { position: "asc" },
           select: {
@@ -238,6 +247,9 @@ export async function updateTheme(
         message: "bgType harus 'solid' atau 'gradient'.",
       });
     }
+    if (payload.themeTemplate && !["SOFT", "BOLD", "MINIMAL", "MIDNIGHT"].includes(payload.themeTemplate)) return res.status(400).json({ success: false, message: "Template tidak valid." });
+    if (payload.fontFamily && !["SYSTEM", "SERIF", "MONO", "ROUNDED"].includes(payload.fontFamily)) return res.status(400).json({ success: false, message: "Font tidak valid." });
+    if (payload.backgroundImage) { try { const parsed = new URL(payload.backgroundImage); if (!/^https?:$/.test(parsed.protocol)) throw new Error(); } catch { return res.status(400).json({ success: false, message: "Background image URL tidak valid." }); } }
 
     const hexRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
     const colorFields: { key: string; value: string | undefined }[] = [
@@ -266,6 +278,9 @@ export async function updateTheme(
         ...(payload.bgGradientEnd && { bgGradientEnd: payload.bgGradientEnd }),
         ...(payload.textColor && { textColor: payload.textColor }),
         ...(payload.buttonColor && { buttonColor: payload.buttonColor }),
+        ...(payload.themeTemplate && { themeTemplate: payload.themeTemplate }),
+        ...(payload.fontFamily && { fontFamily: payload.fontFamily }),
+        ...(payload.backgroundImage !== undefined && { backgroundImage: payload.backgroundImage }),
       },
       select: {
         bgType: true,
@@ -274,6 +289,9 @@ export async function updateTheme(
         bgGradientEnd: true,
         textColor: true,
         buttonColor: true,
+        themeTemplate: true,
+        fontFamily: true,
+        backgroundImage: true,
       },
     });
 
