@@ -38,6 +38,7 @@ Keterangan:
 - `DATABASE_URL` dan `JWT_SECRET` divalidasi saat server startup. Kalau kosong, deploy akan gagal lebih awal.
 - Jika memakai Supabase + Prisma, gunakan `DATABASE_URL` untuk pooled connection dan `DIRECT_URL` untuk Prisma CLI/migrations.
 - Untuk analytics realtime via Supabase Broadcast, backend butuh `SUPABASE_URL` dan `SUPABASE_SECRET_KEY`.
+- Untuk upload avatar, buat bucket Supabase Storage publik bernama `avatars` atau atur `SUPABASE_AVATAR_BUCKET`.
 
 ## 2. Local Development
 

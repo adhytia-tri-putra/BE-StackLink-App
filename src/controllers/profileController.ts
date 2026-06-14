@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { findUserById, sanitizeUser, updateUser } from "../services/userService";
 import type { UpdateProfileInput, UpdateThemeInput } from "../types/user";
 import prisma from "../config/prisma";
+import { storeAvatar } from "../services/avatarStorageService";
 
 interface ProfileBody {
   name?: unknown;
@@ -170,6 +171,8 @@ export async function updateMyProfile(
         message: "Tidak ada data profil yang dikirim.",
       });
     }
+
+    if (payload.avatar) payload.avatar = await storeAvatar(Number(userId), payload.avatar);
 
     const updatedUser = await updateUser(userId, payload);
 
