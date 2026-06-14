@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./config/loadEnv";
 import http, { type IncomingMessage } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 import app from "./app";
@@ -7,7 +7,7 @@ import { getPublicApiUrl, validateRequiredEnv } from "./utils/env";
 import { authenticateSocket } from "./utils/wsAuth";
 import { subscribeToAnalyticsSocket } from "./services/analyticsEvents";
 
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 5000;
 validateRequiredEnv();
 const publicApiUrl = getPublicApiUrl(PORT);
 

@@ -52,6 +52,8 @@ npm run dev
 
 Server jalan di `http://localhost:5000`
 
+Frontend development memakai proxy Vite ke alamat tersebut. Simpan pengaturan lokal non-rahasia di `.env.local`; koneksi database dapat tetap berada di `.env`.
+
 ---
 
 ## 3. Deploy ke Railway
