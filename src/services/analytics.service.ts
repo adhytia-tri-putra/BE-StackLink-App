@@ -10,6 +10,9 @@ type ClickRecord = {
   userAgent: string | null;
   referrer: string | null;
   deviceType: string | null;
+  country: string | null;
+  browser: string | null;
+  os: string | null;
   clickedAt: Date;
 };
 
@@ -17,6 +20,9 @@ type ClickMetadataRow = {
   id: string;
   referrer: string | null;
   device_type: string | null;
+  country: string | null;
+  browser: string | null;
+  os: string | null;
 };
 
 const PERIOD_DAYS: Record<AnalyticsPeriod, number> = {
@@ -34,6 +40,16 @@ export function inferDeviceType(userAgent?: string | null): "Mobile" | "Desktop"
   if (/ipad|tablet|kindle|silk|playbook/.test(ua)) return "Tablet";
   if (/mobile|iphone|android|ipod|blackberry|phone/.test(ua)) return "Mobile";
   return "Desktop";
+}
+
+export function inferBrowser(userAgent?: string | null): string {
+  const ua = userAgent || "";
+  if (/Edg\//.test(ua)) return "Edge"; if (/OPR\//.test(ua)) return "Opera"; if (/Chrome\//.test(ua)) return "Chrome"; if (/Firefox\//.test(ua)) return "Firefox"; if (/Safari\//.test(ua)) return "Safari"; return "Other";
+}
+
+export function inferOperatingSystem(userAgent?: string | null): string {
+  const ua = userAgent || "";
+  if (/Windows/i.test(ua)) return "Windows"; if (/Android/i.test(ua)) return "Android"; if (/iPhone|iPad|iPod/i.test(ua)) return "iOS"; if (/Mac OS/i.test(ua)) return "macOS"; if (/Linux/i.test(ua)) return "Linux"; return "Other";
 }
 
 export function anonymizeIp(ip: string, salt = process.env.ANALYTICS_IP_SALT || process.env.JWT_SECRET): string {
@@ -90,7 +106,7 @@ function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function formatBucketLabel(date: Date, period: AnalyticsPeriod) {
+function formatBucketLabel(date: Date, period: AnalyticsPeriod | "custom") {
   if (period === "7d") {
     return date.toLocaleDateString("en-US", { weekday: "short" });
   }
@@ -113,11 +129,11 @@ function getUniqueVisitorCount(clicks: ClickRecord[]) {
 
 async function getClickMetadata(clickIds: string[]) {
   const uniqueIds = Array.from(new Set(clickIds));
-  if (uniqueIds.length === 0) return new Map<string, Pick<ClickRecord, "referrer" | "deviceType">>();
+  if (uniqueIds.length === 0) return new Map<string, Pick<ClickRecord, "referrer" | "deviceType" | "country" | "browser" | "os">>();
 
   try {
     const rows = await prisma.$queryRaw<ClickMetadataRow[]>(
-      Prisma.sql`SELECT id, referrer, device_type FROM "link_clicks" WHERE id IN (${Prisma.join(uniqueIds)})`
+      Prisma.sql`SELECT id, referrer, device_type, country, browser, os FROM "link_clicks" WHERE id IN (${Prisma.join(uniqueIds)})`
     );
 
     return new Map(
@@ -126,16 +142,19 @@ async function getClickMetadata(clickIds: string[]) {
         {
           referrer: row.referrer,
           deviceType: row.device_type,
+          country: row.country,
+          browser: row.browser,
+          os: row.os,
         },
       ])
     );
   } catch (error) {
     console.warn("Click metadata columns are not available yet.", error);
-    return new Map<string, Pick<ClickRecord, "referrer" | "deviceType">>();
+    return new Map<string, Pick<ClickRecord, "referrer" | "deviceType" | "country" | "browser" | "os">>();
   }
 }
 
-async function attachClickMetadata<T extends Omit<ClickRecord, "referrer" | "deviceType">>(clicks: T[]) {
+async function attachClickMetadata<T extends Omit<ClickRecord, "referrer" | "deviceType" | "country" | "browser" | "os">>(clicks: T[]) {
   const metadata = await getClickMetadata(clicks.map((click) => click.id));
 
   return clicks.map((click) => {
@@ -144,12 +163,14 @@ async function attachClickMetadata<T extends Omit<ClickRecord, "referrer" | "dev
       ...click,
       referrer: itemMetadata?.referrer ?? null,
       deviceType: itemMetadata?.deviceType ?? null,
+      country: itemMetadata?.country ?? null,
+      browser: itemMetadata?.browser ?? null,
+      os: itemMetadata?.os ?? null,
     };
   });
 }
 
-function buildTrafficBuckets(clicks: ClickRecord[], period: AnalyticsPeriod, startDate: Date) {
-  const days = PERIOD_DAYS[period];
+function buildTrafficBuckets(clicks: ClickRecord[], period: AnalyticsPeriod | "custom", startDate: Date, days = period === "custom" ? 1 : PERIOD_DAYS[period]) {
   const buckets = new Map<string, { date: string; label: string; clicks: number; uniqueVisitors: Set<string> }>();
 
   for (let index = 0; index < days; index += 1) {
@@ -218,12 +239,21 @@ function buildReferrers(clicks: ClickRecord[]) {
     .slice(0, 5);
 }
 
+function buildDimension(clicks: ClickRecord[], key: "country" | "browser" | "os") {
+  const counts = new Map<string, number>();
+  clicks.forEach((click) => { const value = click[key] || "Unknown"; counts.set(value, (counts.get(value) || 0) + 1); });
+  return Array.from(counts, ([name, clicks]) => ({ name, clicks })).sort((a, b) => b.clicks - a.clicks).slice(0, 10);
+}
+
 export async function recordClick(
   linkId: string,
   ip: string,
   userAgent: string,
   referrer?: string | null,
-  deviceType?: string | null
+  deviceType?: string | null,
+  country?: string | null,
+  browser?: string | null,
+  os?: string | null
 ) {
   const click = await prisma.linkClick.create({
     data: {
@@ -235,7 +265,7 @@ export async function recordClick(
 
   try {
     await prisma.$executeRaw(
-      Prisma.sql`UPDATE "link_clicks" SET referrer = ${referrer || null}, device_type = ${deviceType || inferDeviceType(userAgent)} WHERE id = ${click.id}`
+      Prisma.sql`UPDATE "link_clicks" SET referrer = ${referrer || null}, device_type = ${deviceType || inferDeviceType(userAgent)}, country = ${country || null}, browser = ${browser || inferBrowser(userAgent)}, os = ${os || inferOperatingSystem(userAgent)} WHERE id = ${click.id}`
     );
   } catch (error) {
     console.warn("Click metadata columns are not available yet.", error);
@@ -282,10 +312,10 @@ export async function getLinkAnalytics(linkId: string, userId: number) {
   };
 }
 
-export async function getAnalyticsSummary(userId: number, period: AnalyticsPeriod = "30d") {
-  const days = PERIOD_DAYS[period];
-  const now = new Date();
-  const startDate = startOfDay(addDays(now, -(days - 1)));
+export async function getAnalyticsSummary(userId: number, period: AnalyticsPeriod | "custom" = "30d", customFrom?: Date, customTo?: Date) {
+  const now = customTo || new Date();
+  const startDate = customFrom ? startOfDay(customFrom) : startOfDay(addDays(now, -((period === "custom" ? 1 : PERIOD_DAYS[period]) - 1)));
+  const days = Math.max(1, Math.min(366, Math.ceil((now.getTime() - startDate.getTime()) / 86400000) + 1));
   const previousStartDate = startOfDay(addDays(startDate, -days));
 
   const links = await prisma.link.findMany({
@@ -381,8 +411,11 @@ export async function getAnalyticsSummary(userId: number, period: AnalyticsPerio
       avgCtr: percentageChange(avgCtr, previousAvgCtr),
     },
     links: summary,
-    traffic: buildTrafficBuckets(allCurrentClicks, period, startDate),
+    traffic: buildTrafficBuckets(allCurrentClicks, period, startDate, days),
     deviceSplit: buildDeviceSplit(allCurrentClicks),
     referrers: buildReferrers(allCurrentClicks),
+    countries: buildDimension(allCurrentClicks, "country"),
+    browsers: buildDimension(allCurrentClicks, "browser"),
+    operatingSystems: buildDimension(allCurrentClicks, "os"),
   };
 }

@@ -4,6 +4,8 @@ import {
   getLinkAnalytics,
   getAnalyticsSummary,
   inferDeviceType,
+  inferBrowser,
+  inferOperatingSystem,
   normalizeAnalyticsPeriod,
   recordClick,
 } from "../services/analytics.service";
@@ -54,8 +56,12 @@ export async function getAnalyticsSummaryHandler(
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const period = normalizeAnalyticsPeriod(req.query.period);
-    const data = await getAnalyticsSummary(Number(userId), period);
+    const from = typeof req.query.from === "string" ? new Date(req.query.from) : null;
+    const to = typeof req.query.to === "string" ? new Date(req.query.to) : null;
+    const custom = from && to && !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && from <= to;
+    if (custom) to.setHours(23, 59, 59, 999);
+    const period = custom ? "custom" : normalizeAnalyticsPeriod(req.query.period);
+    const data = await getAnalyticsSummary(Number(userId), period, custom ? from : undefined, custom ? to : undefined);
 
     return res.status(200).json({
       success: true,
@@ -137,7 +143,9 @@ export async function recordClickHandler(
       select: { userId: true },
     });
 
-    const click = await recordClick(id, ip, String(userAgent), referrer, deviceType);
+    const countryHeader = req.headers["cf-ipcountry"] || req.headers["x-vercel-ip-country"] || req.headers["x-country-code"];
+    const country = typeof countryHeader === "string" ? countryHeader.trim().toUpperCase().slice(0, 3) : null;
+    const click = await recordClick(id, ip, String(userAgent), referrer, deviceType, country, inferBrowser(String(userAgent)), inferOperatingSystem(String(userAgent)));
 
     if (link?.userId) {
       void publishAnalyticsEvent(link.userId, {

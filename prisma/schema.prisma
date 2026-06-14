@@ -132,6 +132,9 @@ model LinkClick {
   userAgent String?  @map("user_agent")
   referrer  String?
   deviceType String? @map("device_type")
+  country    String?
+  browser    String?
+  os         String?
   clickedAt DateTime @default(now()) @map("clicked_at")
 
   link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)

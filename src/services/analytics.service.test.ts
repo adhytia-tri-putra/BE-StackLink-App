@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anonymizeIp, getAnalyticsRetentionDays, inferDeviceType, normalizeAnalyticsPeriod } from "./analytics.service";
+import { anonymizeIp, getAnalyticsRetentionDays, inferBrowser, inferDeviceType, inferOperatingSystem, normalizeAnalyticsPeriod } from "./analytics.service";
 
 describe("analytics helpers", () => {
   it("normalizes supported periods", () => {
@@ -28,5 +28,10 @@ describe("analytics helpers", () => {
     expect(getAnalyticsRetentionDays()).toBe(90);
     if (previous === undefined) delete process.env.ANALYTICS_RETENTION_DAYS;
     else process.env.ANALYTICS_RETENTION_DAYS = previous;
+  });
+
+  it("classifies browser and operating system", () => {
+    expect(inferBrowser("Mozilla Chrome/120 Safari/537")).toBe("Chrome");
+    expect(inferOperatingSystem("Mozilla Windows NT 10.0")).toBe("Windows");
   });
 });
