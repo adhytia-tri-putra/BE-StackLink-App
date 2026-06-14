@@ -11,11 +11,14 @@ import qrRoute from "./routes/qr.route";
 import analyticsRoute from "./routes/analytics.route";
 import { getAllowedOrigins } from "./utils/env";
 import accountRoutes from "./routes/accountRoute";
+import prisma from "./config/prisma";
+import { requestLogger } from "./middleware/requestLogger";
 
 const app = express();
 const allowedOrigins = getAllowedOrigins();
 
 app.set("trust proxy", 1);
+app.use(requestLogger);
 app.use(helmet());
 
 const isLocalhostOrigin = (origin: string) => origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
@@ -45,6 +48,15 @@ app.get("/api/health", (_req, res) => {
     success: true,
     message: "API is running",
   });
+});
+
+app.get("/api/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ success: true, message: "API and database are ready" });
+  } catch {
+    res.status(503).json({ success: false, message: "Database is unavailable" });
+  }
 });
 
 app.use("/api/auth", authRoutes);

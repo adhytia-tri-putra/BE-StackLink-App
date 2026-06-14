@@ -1,4 +1,5 @@
 import "./config/loadEnv";
+import "./config/monitoring";
 import http, { type IncomingMessage } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 import app from "./app";
@@ -6,6 +7,7 @@ import prisma from "./config/prisma";
 import { getPublicApiUrl, validateRequiredEnv } from "./utils/env";
 import { authenticateSocket } from "./utils/wsAuth";
 import { subscribeToAnalyticsSocket } from "./services/analyticsEvents";
+import { deleteExpiredSessions } from "./services/sessionService";
 
 const PORT = Number(process.env.PORT) || 5000;
 validateRequiredEnv();
@@ -37,12 +39,22 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`Healthcheck: ${publicApiUrl}/api/health`);
 });
 
+const cleanupTimer = setInterval(() => {
+  void Promise.all([
+    deleteExpiredSessions(),
+    prisma.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: new Date() } }, { usedAt: { not: null } }] } }),
+    prisma.emailVerificationToken.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
+  ]).catch((error) => console.error("Token cleanup failed", error));
+}, 60 * 60 * 1000);
+cleanupTimer.unref();
+
 function shutdown(signal: string) {
   if (isShuttingDown) {
     return;
   }
 
   isShuttingDown = true;
+  clearInterval(cleanupTimer);
   console.log(`Menerima ${signal}, menutup server...`);
 
   wss.close();

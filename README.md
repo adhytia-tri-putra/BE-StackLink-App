@@ -2,6 +2,8 @@
 
 Backend untuk aplikasi InstaCard (Linktree clone) menggunakan ExpressJS, Prisma, dan PostgreSQL.
 
+Panduan deployment, monitoring, backup, dan custom domain tersedia di `PRODUCTION.md`.
+
 ## Tech Stack
 
 - Node.js + Express + TypeScript

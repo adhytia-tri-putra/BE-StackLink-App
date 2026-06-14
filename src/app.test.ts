@@ -25,4 +25,20 @@ describe("StackLink API", () => {
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
   });
+
+  it("rejects an empty login request", async () => {
+    const response = await request(app).post("/api/auth/login").send({});
+    expect(response.status).toBe(400);
+  });
+
+  it("protects account routes", async () => {
+    const response = await request(app).patch("/api/account").send({ username: "new-name" });
+    expect(response.status).toBe(401);
+  });
+
+  it("returns JSON for missing routes", async () => {
+    const response = await request(app).get("/api/missing");
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+  });
 });

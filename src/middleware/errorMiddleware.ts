@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { Sentry } from "../config/monitoring";
 
 export function notFoundHandler(req: Request, res: Response): Response {
   return res.status(404).json({
@@ -13,12 +14,13 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): Response {
-  console.error(err);
+  Sentry.captureException(err);
 
-  const message = err instanceof Error ? err.message : "Terjadi kesalahan pada server.";
+  const message = process.env.NODE_ENV === "production" ? "Terjadi kesalahan pada server." : err instanceof Error ? err.message : "Terjadi kesalahan pada server.";
 
   return res.status(500).json({
     success: false,
     message,
+    requestId: res.getHeader("x-request-id"),
   });
 }
