@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/prisma";
 import { generateQRCode, buildProfileUrl } from "../services/qr.service";
+import { getFallbackFrontendUrl, getPublicProfileBaseUrl } from "../utils/env";
 
 // GET /api/qr/profile
 export async function getProfileQR(
@@ -25,10 +26,9 @@ export async function getProfileQR(
       return;
     }
 
-    const fallbackBaseUrl = req.get("host")?.includes("localhost")
-      ? "http://localhost:5173"
-      : `${req.protocol}://${req.get("host")}`;
-    const baseUrl = process.env.FRONTEND_URL?.split(",")[0]?.trim() || process.env.BASE_URL || fallbackBaseUrl;
+    const requestBaseUrl = req.get("host") ? `${req.protocol}://${req.get("host")}` : undefined;
+    const fallbackBaseUrl = getFallbackFrontendUrl(requestBaseUrl);
+    const baseUrl = getPublicProfileBaseUrl() || fallbackBaseUrl;
     const profileUrl = buildProfileUrl(baseUrl, user.username);
 
     const format = req.query.format === "svg" ? "svg" : "base64";

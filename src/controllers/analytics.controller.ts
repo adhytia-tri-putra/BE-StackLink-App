@@ -116,7 +116,7 @@ export async function recordClickHandler(
     const click = await recordClick(id, ip, String(userAgent), referrer, deviceType);
 
     if (link?.userId) {
-      publishAnalyticsEvent(link.userId, {
+      void publishAnalyticsEvent(link.userId, {
         linkId: id,
         referrer,
         deviceType,

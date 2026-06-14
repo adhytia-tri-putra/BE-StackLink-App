@@ -8,10 +8,10 @@ import linkRoute from "./routes/link.route";
 import publicRoute from "./routes/publicRoute";
 import qrRoute from "./routes/qr.route";
 import analyticsRoute from "./routes/analytics.route";
+import { getAllowedOrigins } from "./utils/env";
 
 const app = express();
-const frontendUrl = process.env.FRONTEND_URL;
-const allowedOrigins = frontendUrl ? frontendUrl.split(",").map((origin) => origin.trim()).filter(Boolean) : ["http://localhost:5173", "http://localhost:3000"];
+const allowedOrigins = getAllowedOrigins();
 
 const isLocalhostOrigin = (origin: string) => origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
 const isDevTunnelOrigin = (origin: string) => origin.endsWith(".devtunnels.ms") || origin.includes(".devtunnels.ms");

@@ -1,6 +1,6 @@
-# StackLink API Backend
+# InstaCard API Backend
 
-Backend untuk aplikasi StackLink (Linktree clone) menggunakan ExpressJS, Prisma, dan PostgreSQL.
+Backend untuk aplikasi InstaCard (Linktree clone) menggunakan ExpressJS, Prisma, dan PostgreSQL.
 
 ## Tech Stack
 
@@ -10,26 +10,42 @@ Backend untuk aplikasi StackLink (Linktree clone) menggunakan ExpressJS, Prisma,
 - bcryptjs
 - qrcode
 
-## 1. Setup
+## 1. Environment Variables
 
 1. Copy `.env.example` jadi `.env`
-2. Isi variabel berikut di `.env`:
+2. Isi variabel berikut:
 
 ```env
 PORT=5000
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=1d
-DATABASE_URL=postgresql://user:password@localhost:5432/stacklink_db?schema=public
-BASE_URL=http://localhost:5000
+DATABASE_URL=postgresql://user:password@localhost:5432/instacard_db?schema=public
+DIRECT_URL=postgresql://user:password@db.project-ref.supabase.co:5432/postgres
+SUPABASE_URL=https://project-ref.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_xxx
+PUBLIC_APP_URL=http://localhost:5173
+PUBLIC_API_URL=http://localhost:5000
 ```
 
-3. Jalankan:
+Keterangan:
+
+- `FRONTEND_URL` bisa diisi lebih dari satu origin, dipisahkan koma.
+- `PUBLIC_APP_URL` dipakai untuk membentuk URL publik profil, terutama untuk QR profile.
+- `PUBLIC_API_URL` opsional, dipakai untuk log/healthcheck URL publik backend.
+- `BASE_URL` masih didukung sebagai fallback lama untuk `PUBLIC_APP_URL`.
+- `JWT_SECRET` wajib diisi dengan secret acak yang panjang.
+- `DATABASE_URL` dan `JWT_SECRET` divalidasi saat server startup. Kalau kosong, deploy akan gagal lebih awal.
+- Jika memakai Supabase + Prisma, gunakan `DATABASE_URL` untuk pooled connection dan `DIRECT_URL` untuk Prisma CLI/migrations.
+- Untuk analytics realtime via Supabase Broadcast, backend butuh `SUPABASE_URL` dan `SUPABASE_SECRET_KEY`.
+
+## 2. Local Development
+
+Jalankan:
 
 ```bash
 npm install
-npx prisma migrate dev
-npx prisma generate
+npm run prisma:migrate:dev
 npm run dev
 ```
 
@@ -37,41 +53,79 @@ Server jalan di `http://localhost:5000`
 
 ---
 
-## 2. Endpoints
+## 3. Deploy ke Railway
+
+Project ini siap untuk Railway dengan alur berikut:
+
+1. Buat service Node.js di Railway dan hubungkan repo.
+2. Tambahkan PostgreSQL service atau set `DATABASE_URL` manual.
+3. Set environment variables berikut di Railway:
+
+```env
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
+SUPABASE_URL=https://project-ref.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_xxx
+JWT_SECRET=your-production-secret
+JWT_EXPIRES_IN=1d
+FRONTEND_URL=https://your-frontend-domain.com
+PUBLIC_APP_URL=https://your-frontend-domain.com
+PUBLIC_API_URL=https://your-backend-domain.up.railway.app
+```
+
+4. Gunakan command berikut:
+
+```bash
+Build command: npm install && npm run build
+Start command: npm run prisma:migrate:deploy && npm start
+```
+
+Catatan:
+
+- Railway akan menyediakan `PORT` otomatis, dan server ini sudah memakainya.
+- Endpoint healthcheck tersedia di `/api/health`.
+- WebSocket analytics tersedia di path `/api/analytics/socket`.
+- Jika env Supabase tersedia, analytics page akan memakai Supabase Realtime Broadcast dan WebSocket custom menjadi fallback.
+- Kalau memakai `railway.json`, command di atas sudah terpasang otomatis lewat config-as-code.
+
+---
+
+## 4. Endpoints
 
 ### Auth
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST | `/api/auth/register` | Register user baru |
-| POST | `/api/auth/login` | Login, return JWT token |
+| Method | Endpoint             | Deskripsi               |
+| ------ | -------------------- | ----------------------- |
+| POST   | `/api/auth/register` | Register user baru      |
+| POST   | `/api/auth/login`    | Login, return JWT token |
 
 #### `POST /api/auth/register`
 
 Request:
+
 ```json
 {
-  "username": "wowok",
-  "name": "Wowok",
-  "email": "wowok@gmail.com",
+  "username": "Saeki",
+  "name": "Saeki Amanda",
+  "email": "saeki@gmail.com",
   "password": "admin1234"
 }
 ```
 
 Response:
+
 ```json
 {
   "success": true,
-  "message": "Register berhasil.",
+  "message": "Register berhasil. Silakan login untuk mendapatkan token.",
   "data": {
     "user": {
       "id": 1,
-      "username": "wowok",
-      "name": "Wowok",
-      "email": "wowok@gmail.com",
+      "username": "Saeki",
+      "name": "Saeki Amanda",
+      "email": "saeki@gmail.com",
       "createdAt": "2026-05-09T13:00:00.000Z"
-    },
-    "token": "JWT_TOKEN"
+    }
   }
 }
 ```
@@ -79,14 +133,16 @@ Response:
 #### `POST /api/auth/login`
 
 Request:
+
 ```json
 {
-  "email": "wowok@gmail.com",
+  "email": "saeki@gmail.com",
   "password": "admin1234"
 }
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -94,9 +150,9 @@ Response:
   "data": {
     "user": {
       "id": 1,
-      "username": "wowok",
-      "name": "Wowok",
-      "email": "wowok@gmail.com",
+      "username": "Saeki",
+      "name": "Saeki Amanda",
+      "email": "saeki@gmail.com",
       "createdAt": "2026-05-09T13:00:00.000Z"
     },
     "token": "JWT_TOKEN"
@@ -110,24 +166,25 @@ Response:
 
 > Semua endpoint profile butuh header `Authorization: Bearer <token>`
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/profiles/me` | Ambil profil user |
-| PATCH | `/api/profiles/me` | Update profil user |
-| PUT | `/api/profiles/theme` | Update theme profil |
+| Method | Endpoint              | Deskripsi           |
+| ------ | --------------------- | ------------------- |
+| GET    | `/api/profiles/me`    | Ambil profil user   |
+| PATCH  | `/api/profiles/me`    | Update profil user  |
+| PUT    | `/api/profiles/theme` | Update theme profil |
 
 #### `GET /api/profiles/me`
 
 Response:
+
 ```json
 {
   "success": true,
   "message": "Profil berhasil diambil.",
   "data": {
     "id": 1,
-    "username": "wowok",
-    "name": "Wowok",
-    "email": "wowok@gmail.com",
+    "username": "Saeki",
+    "name": "Saeki Amanda",
+    "email": "saeki@gmail.com",
     "bio": "Full Stack Developer",
     "avatar": "https://example.com/avatar.jpg",
     "headline": "Building cool things",
@@ -139,9 +196,10 @@ Response:
 #### `PATCH /api/profiles/me`
 
 Request:
+
 ```json
 {
-  "name": "Wowok",
+  "name": "Saeki Amanda",
   "bio": "Full Stack Developer",
   "avatar": "https://example.com/avatar.jpg",
   "headline": "Building cool things"
@@ -149,15 +207,16 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
   "message": "Profil berhasil diperbarui.",
   "data": {
     "id": 1,
-    "username": "wowok",
-    "name": "Wowok",
-    "email": "wowok@gmail.com",
+    "username": "Saeki",
+    "name": "Saeki Amanda",
+    "email": "saeki@gmail.com",
     "bio": "Full Stack Developer",
     "avatar": "https://example.com/avatar.jpg",
     "headline": "Building cool things",
@@ -169,6 +228,7 @@ Response:
 #### `PUT /api/profiles/theme`
 
 Request:
+
 ```json
 {
   "bgType": "gradient",
@@ -180,6 +240,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -201,17 +262,18 @@ Response:
 
 > Semua endpoint links butuh header `Authorization: Bearer <token>`
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/links` | Ambil semua link milik user |
-| POST | `/api/links` | Buat link baru |
-| PUT | `/api/links/:id` | Update link |
-| DELETE | `/api/links/:id` | Hapus link |
-| PATCH | `/api/links/reorder` | Reorder posisi link |
+| Method | Endpoint             | Deskripsi                   |
+| ------ | -------------------- | --------------------------- |
+| GET    | `/api/links`         | Ambil semua link milik user |
+| POST   | `/api/links`         | Buat link baru              |
+| PUT    | `/api/links/:id`     | Update link                 |
+| DELETE | `/api/links/:id`     | Hapus link                  |
+| PATCH  | `/api/links/reorder` | Reorder posisi link         |
 
 #### `GET /api/links`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -234,6 +296,7 @@ Response:
 #### `POST /api/links`
 
 Request:
+
 ```json
 {
   "title": "Instagram saya",
@@ -243,6 +306,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -263,6 +327,7 @@ Response:
 #### `PUT /api/links/:id`
 
 Request:
+
 ```json
 {
   "title": "Instagram saya (updated)",
@@ -273,6 +338,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -291,6 +357,7 @@ Response:
 #### `DELETE /api/links/:id`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -301,6 +368,7 @@ Response:
 #### `PATCH /api/links/reorder`
 
 Request:
+
 ```json
 {
   "links": [
@@ -312,6 +380,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -325,29 +394,30 @@ Response:
 
 > Butuh header `Authorization: Bearer <token>`
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/qr/profile` | QR Code halaman profil publik |
-| GET | `/api/qr/links/:id` | QR Code untuk link tertentu |
+| Method | Endpoint            | Deskripsi                     |
+| ------ | ------------------- | ----------------------------- |
+| GET    | `/api/qr/profile`   | QR Code halaman profil publik |
+| GET    | `/api/qr/links/:id` | QR Code untuk link tertentu   |
 
 Query params (opsional):
 
-| Param | Default | Deskripsi |
-|-------|---------|-----------|
-| `format` | `base64` | `base64` atau `svg` |
-| `width` | `300` | Ukuran QR dalam px |
-| `dark` | `#000000` | Warna gelap (hex) |
-| `light` | `#ffffff` | Warna terang (hex) |
-| `raw` | - | `true` untuk return SVG langsung sebagai image |
+| Param    | Default   | Deskripsi                                      |
+| -------- | --------- | ---------------------------------------------- |
+| `format` | `base64`  | `base64` atau `svg`                            |
+| `width`  | `300`     | Ukuran QR dalam px                             |
+| `dark`   | `#000000` | Warna gelap (hex)                              |
+| `light`  | `#ffffff` | Warna terang (hex)                             |
+| `raw`    | -         | `true` untuk return SVG langsung sebagai image |
 
 Response:
+
 ```json
 {
   "success": true,
   "message": "QR Code profil berhasil dibuat",
   "data": {
-    "username": "wowok",
-    "profileUrl": "http://localhost:5000/u/wowok",
+    "username": "Saeki",
+    "profileUrl": "http://localhost:5000/u/Saeki",
     "format": "png/base64",
     "qrCode": "data:image/png;base64,iVBORw0KGgo..."
   }
@@ -360,14 +430,15 @@ Response:
 
 > Butuh header `Authorization: Bearer <token>`
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/analytics/summary` | Total klik semua link |
-| GET | `/api/analytics/links/:id` | Detail klik per link |
+| Method | Endpoint                   | Deskripsi             |
+| ------ | -------------------------- | --------------------- |
+| GET    | `/api/analytics/summary`   | Total klik semua link |
+| GET    | `/api/analytics/links/:id` | Detail klik per link  |
 
 #### `GET /api/analytics/summary`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -391,6 +462,7 @@ Response:
 #### `GET /api/analytics/links/:id`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -418,22 +490,23 @@ Response:
 
 > Tidak butuh autentikasi
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/u/:username` | Halaman publik profil + links |
-| GET | `/u/:username/links/:id` | Detail link publik |
-| POST | `/u/:username/links/:id/click` | Record klik link |
+| Method | Endpoint                       | Deskripsi                     |
+| ------ | ------------------------------ | ----------------------------- |
+| GET    | `/u/:username`                 | Halaman publik profil + links |
+| GET    | `/u/:username/links/:id`       | Detail link publik            |
+| POST   | `/u/:username/links/:id/click` | Record klik link              |
 
 #### `GET /u/:username`
 
 Response:
+
 ```json
 {
   "success": true,
   "message": "Profil berhasil diambil.",
   "data": {
-    "username": "wowok",
-    "name": "Wowok",
+    "username": "Saeki",
+    "name": "Saeki Amanda",
     "bio": "Full Stack Developer",
     "avatar": "https://example.com/avatar.jpg",
     "headline": "Building cool things",
@@ -459,6 +532,7 @@ Response:
 #### `GET /u/:username/links/:id`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -471,8 +545,8 @@ Response:
     "position": 0,
     "createdAt": "2026-05-09T14:20:02.812Z",
     "user": {
-      "username": "wowok",
-      "name": "Wowok",
+      "username": "Saeki",
+      "name": "Saeki Amanda",
       "avatar": "https://example.com/avatar.jpg"
     }
   }
@@ -482,6 +556,7 @@ Response:
 #### `POST /u/:username/links/:id/click`
 
 Response:
+
 ```json
 {
   "success": true,
@@ -491,7 +566,7 @@ Response:
 
 ---
 
-## 3. Contoh Integrasi Frontend
+## 5. Contoh Integrasi Frontend
 
 ```js
 // Login
@@ -499,7 +574,7 @@ const response = await fetch("http://localhost:5000/api/auth/login", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    email: "wowok@gmail.com",
+    email: "saeki@gmail.com",
     password: "admin1234",
   }),
 });
@@ -528,16 +603,20 @@ await fetch("http://localhost:5000/api/links", {
 });
 
 // Record klik link
-await fetch("http://localhost:5000/u/wowok/links/cmoyfkubg0001u768fk13hk34/click", {
-  method: "POST",
-});
+await fetch(
+  "http://localhost:5000/u/Saeki/links/cmoyfkubg0001u768fk13hk34/click",
+  {
+    method: "POST",
+  },
+);
 ```
 
 ---
 
-## 4. Format Response
+## 6. Format Response
 
 ### Sukses
+
 ```json
 {
   "success": true,
@@ -547,6 +626,7 @@ await fetch("http://localhost:5000/u/wowok/links/cmoyfkubg0001u768fk13hk34/click
 ```
 
 ### Error
+
 ```json
 {
   "success": false,

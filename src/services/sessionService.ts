@@ -17,6 +17,21 @@ export async function findSessionByToken(token: string) {
   });
 }
 
+export async function findActiveSessionsByUserId(userId: number) {
+  return prisma.session.findMany({
+    where: {
+      userId,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    select: {
+      token: true,
+      expiresAt: true,
+    },
+  });
+}
+
 export async function deleteSession(token: string) {
   return prisma.session.delete({
     where: { token },

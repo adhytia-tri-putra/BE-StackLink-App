@@ -1,5 +1,7 @@
 import type { Response } from "express";
 import type { WebSocket } from "ws";
+import { findActiveSessionsByUserId } from "./sessionService";
+import { getAnalyticsRealtimeTopic } from "../utils/realtimeTopic";
 
 type AnalyticsEvent = {
   type: string;
@@ -9,6 +11,8 @@ type AnalyticsEvent = {
 
 const sseClients = new Map<number, Set<Response>>();
 const wsClients = new Map<number, Set<WebSocket>>();
+const supabaseUrl = process.env.SUPABASE_URL?.trim();
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
 function sendEvent(res: Response, event: AnalyticsEvent) {
   if (!res.writableEnded) {
@@ -62,7 +66,43 @@ export function subscribeToAnalyticsSocket(userId: number, socket: WebSocket) {
   });
 }
 
-export function publishAnalyticsEvent(userId: number, payload: unknown) {
+async function publishSupabaseBroadcast(userId: number, event: AnalyticsEvent) {
+  if (!supabaseUrl || !supabaseSecretKey) {
+    return;
+  }
+
+  const sessions = await findActiveSessionsByUserId(userId);
+  if (sessions.length === 0) {
+    return;
+  }
+
+  const messages = sessions.map((session) => ({
+    topic: getAnalyticsRealtimeTopic(session.token),
+    event: event.type,
+    payload: {
+      ...(typeof event.payload === "object" && event.payload !== null ? event.payload : {}),
+      timestamp: event.timestamp,
+    },
+    private: false,
+  }));
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseSecretKey,
+      Authorization: `Bearer ${supabaseSecretKey}`,
+    },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(`Supabase Realtime broadcast failed: ${response.status} ${message}`);
+  }
+}
+
+export async function publishAnalyticsEvent(userId: number, payload: unknown) {
   const event = {
     type: "analytics-update",
     payload,
@@ -98,4 +138,8 @@ export function publishAnalyticsEvent(userId: number, payload: unknown) {
       wsClients.delete(userId);
     }
   }
+
+  await publishSupabaseBroadcast(userId, event).catch((error) => {
+    console.warn("Failed to publish Supabase analytics event.", error);
+  });
 }
