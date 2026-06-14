@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inferDeviceType, normalizeAnalyticsPeriod } from "./analytics.service";
+import { anonymizeIp, getAnalyticsRetentionDays, inferDeviceType, normalizeAnalyticsPeriod } from "./analytics.service";
 
 describe("analytics helpers", () => {
   it("normalizes supported periods", () => {
@@ -12,5 +12,21 @@ describe("analytics helpers", () => {
     expect(inferDeviceType("Mozilla iPhone Mobile")).toBe("Mobile");
     expect(inferDeviceType("Mozilla iPad Tablet")).toBe("Tablet");
     expect(inferDeviceType("Mozilla Windows NT")).toBe("Desktop");
+  });
+
+  it("anonymizes IP addresses deterministically without exposing the source", () => {
+    const first = anonymizeIp("203.0.113.42", "test-salt");
+    expect(first).toBe(anonymizeIp("203.0.113.42", "test-salt"));
+    expect(first).not.toContain("203.0.113.42");
+    expect(first).toHaveLength(64);
+    expect(first).not.toBe(anonymizeIp("203.0.113.42", "different-salt"));
+  });
+
+  it("uses a safe analytics retention default", () => {
+    const previous = process.env.ANALYTICS_RETENTION_DAYS;
+    process.env.ANALYTICS_RETENTION_DAYS = "invalid";
+    expect(getAnalyticsRetentionDays()).toBe(90);
+    if (previous === undefined) delete process.env.ANALYTICS_RETENTION_DAYS;
+    else process.env.ANALYTICS_RETENTION_DAYS = previous;
   });
 });

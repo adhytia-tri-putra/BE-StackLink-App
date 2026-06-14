@@ -8,6 +8,7 @@ import { getPublicApiUrl, validateRequiredEnv } from "./utils/env";
 import { authenticateSocket } from "./utils/wsAuth";
 import { subscribeToAnalyticsSocket } from "./services/analyticsEvents";
 import { deleteExpiredSessions } from "./services/sessionService";
+import { deleteExpiredAnalytics } from "./services/analytics.service";
 
 const PORT = Number(process.env.PORT) || 5000;
 validateRequiredEnv();
@@ -42,9 +43,10 @@ server.listen(PORT, "0.0.0.0", () => {
 const cleanupTimer = setInterval(() => {
   void Promise.all([
     deleteExpiredSessions(),
+    deleteExpiredAnalytics(),
     prisma.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: new Date() } }, { usedAt: { not: null } }] } }),
     prisma.emailVerificationToken.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
-  ]).catch((error) => console.error("Token cleanup failed", error));
+  ]).catch((error) => console.error("Scheduled cleanup failed", error));
 }, 60 * 60 * 1000);
 cleanupTimer.unref();
 

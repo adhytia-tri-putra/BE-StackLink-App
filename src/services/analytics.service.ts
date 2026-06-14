@@ -1,5 +1,6 @@
 import prisma from "../config/prisma";
 import { Prisma } from "@prisma/client";
+import { createHmac } from "crypto";
 
 export type AnalyticsPeriod = "7d" | "30d" | "90d";
 
@@ -33,6 +34,26 @@ export function inferDeviceType(userAgent?: string | null): "Mobile" | "Desktop"
   if (/ipad|tablet|kindle|silk|playbook/.test(ua)) return "Tablet";
   if (/mobile|iphone|android|ipod|blackberry|phone/.test(ua)) return "Mobile";
   return "Desktop";
+}
+
+export function anonymizeIp(ip: string, salt = process.env.ANALYTICS_IP_SALT || process.env.JWT_SECRET): string {
+  if (!salt) {
+    throw new Error("ANALYTICS_IP_SALT or JWT_SECRET must be configured");
+  }
+
+  return createHmac("sha256", salt).update(ip.trim().toLowerCase()).digest("hex");
+}
+
+export function getAnalyticsRetentionDays(): number {
+  const configured = Number(process.env.ANALYTICS_RETENTION_DAYS || 90);
+  return Number.isInteger(configured) && configured > 0 ? configured : 90;
+}
+
+export async function deleteExpiredAnalytics(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - getAnalyticsRetentionDays());
+  const result = await prisma.linkClick.deleteMany({ where: { clickedAt: { lt: cutoff } } });
+  return result.count;
 }
 
 function classifyReferrer(referrer?: string | null): string {
@@ -207,7 +228,7 @@ export async function recordClick(
   const click = await prisma.linkClick.create({
     data: {
       linkId,
-      ip,
+      ip: anonymizeIp(ip),
       userAgent,
     },
   });
@@ -252,7 +273,12 @@ export async function getLinkAnalytics(linkId: string, userId: number) {
     url: link.url,
     totalClicks: clicks.length,
     uniqueVisitors: getUniqueVisitorCount(clicks),
-    clicks,
+    clicks: clicks.map((click) => ({
+      id: click.id,
+      referrer: click.referrer,
+      deviceType: click.deviceType,
+      clickedAt: click.clickedAt,
+    })),
   };
 }
 

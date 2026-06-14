@@ -6,6 +6,7 @@
 - SMTP provider with verified sender; configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM`.
 - Public Supabase Storage bucket configured by `SUPABASE_AVATAR_BUCKET`.
 - Sentry project configured with `SENTRY_DSN`; start with `SENTRY_TRACES_SAMPLE_RATE=0.1`.
+- A dedicated random `ANALYTICS_IP_SALT`; click IPs are HMAC-hashed and retained for `ANALYTICS_RETENTION_DAYS` (90 by default).
 
 ## Deployment checks
 
@@ -24,6 +25,7 @@ Set `CUSTOM_DOMAIN_TARGET` to the canonical frontend hostname so Publishing diag
 - Retain daily backups for at least 14 days and monthly backups for at least 6 months.
 - Perform a restore rehearsal in a non-production database at least quarterly.
 - Storage object retention should match database retention; deleted avatars are removed by the application.
+- Analytics click records older than `ANALYTICS_RETENTION_DAYS` are deleted by the hourly cleanup job.
 
 ## Incident response
 
