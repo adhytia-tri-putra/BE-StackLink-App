@@ -9,6 +9,7 @@ import publicRoute from "./routes/publicRoute";
 import qrRoute from "./routes/qr.route";
 import analyticsRoute from "./routes/analytics.route";
 import { getAllowedOrigins } from "./utils/env";
+import accountRoutes from "./routes/accountRoute";
 
 const app = express();
 const allowedOrigins = getAllowedOrigins();
@@ -43,6 +44,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/account", accountRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/links", linkRoute);
