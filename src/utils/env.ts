@@ -53,3 +53,21 @@ export function validateRequiredEnv(): void {
     throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`);
   }
 }
+
+export function getProductionReadiness() {
+  const checks = {
+    database: Boolean(process.env.DATABASE_URL?.trim()),
+    jwt: Boolean(process.env.JWT_SECRET?.trim() && process.env.JWT_SECRET.trim().length >= 32),
+    email: ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "EMAIL_FROM"].every((key) => Boolean(process.env[key]?.trim())),
+    avatarStorage: ["SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_AVATAR_BUCKET"].every((key) => Boolean(process.env[key]?.trim())),
+    monitoring: Boolean(process.env.SENTRY_DSN?.trim()),
+    customDomains: Boolean(process.env.CUSTOM_DOMAIN_TARGET?.trim()),
+    analyticsPrivacy: Boolean(process.env.ANALYTICS_IP_SALT?.trim()),
+  };
+
+  return {
+    ready: Object.values(checks).every(Boolean),
+    checks,
+    missing: Object.entries(checks).filter(([, configured]) => !configured).map(([name]) => name),
+  };
+}

@@ -4,6 +4,7 @@ import type { UpdateProfileInput, UpdateThemeInput } from "../types/user";
 import prisma from "../config/prisma";
 import { resolve4, resolveCname } from "node:dns/promises";
 import { deleteStoredAvatar, storeAvatar } from "../services/avatarStorageService";
+import { getProductionReadiness } from "../utils/env";
 
 interface ProfileBody {
   name?: unknown;
@@ -351,6 +352,7 @@ export async function getPublishingDiagnostics(req: Request, res: Response, next
       success: true,
       data: {
         domain,
+        production: getProductionReadiness(),
         pixels: {
           googleAnalytics: { configured: Boolean(user.googleAnalyticsId), valid: !user.googleAnalyticsId || /^G-[A-Z0-9]+$/i.test(user.googleAnalyticsId) },
           meta: { configured: Boolean(user.metaPixelId), valid: !user.metaPixelId || /^\d{5,30}$/.test(user.metaPixelId) },

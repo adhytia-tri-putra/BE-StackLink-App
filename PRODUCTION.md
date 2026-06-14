@@ -14,6 +14,7 @@
 2. Monitor `/api/ready`, not only `/api/health`. A `503` means the database is unavailable.
 3. Configure an uptime monitor at a one-minute or five-minute interval and alert on two consecutive failures.
 4. Keep frontend `VITE_API_BASE_URL`, backend `FRONTEND_URL`, and `PUBLIC_APP_URL` aligned.
+5. Open Publishing diagnostics after deployment. The production checklist reports configuration status without exposing credential values.
 
 ## Custom domains
 
