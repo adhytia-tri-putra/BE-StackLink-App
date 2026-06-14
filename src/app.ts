@@ -24,6 +24,15 @@ app.use(helmet());
 const isLocalhostOrigin = (origin: string) => origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
 const isDevTunnelOrigin = (origin: string) => origin.endsWith(".devtunnels.ms") || origin.includes(".devtunnels.ms");
 
+async function isConfiguredCustomDomain(origin: string): Promise<boolean> {
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return Boolean(await prisma.user.findUnique({ where: { customDomain: hostname }, select: { id: true } }));
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -37,7 +46,7 @@ app.use(
       if (isDevTunnelOrigin(origin)) {
         return callback(null, true);
       }
-      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      void isConfiguredCustomDomain(origin).then((allowed) => callback(allowed ? null : new Error(`Origin ${origin} not allowed by CORS`), allowed));
     },
   }),
 );

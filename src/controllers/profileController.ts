@@ -297,17 +297,28 @@ export async function updatePublishingSettings(
     if (customDomain && !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(customDomain)) {
       return res.status(400).json({ success: false, message: "Custom domain tidak valid." });
     }
+    const googleAnalyticsId = clean(req.body.googleAnalyticsId, 30);
+    const metaPixelId = clean(req.body.metaPixelId, 30);
+    const tiktokPixelId = clean(req.body.tiktokPixelId, 30);
+    const socialImage = clean(req.body.socialImage, 2048);
+    if (googleAnalyticsId && !/^G-[A-Z0-9]+$/i.test(googleAnalyticsId)) return res.status(400).json({ success: false, message: "Google Analytics ID tidak valid." });
+    if (metaPixelId && !/^\d{5,30}$/.test(metaPixelId)) return res.status(400).json({ success: false, message: "Meta Pixel ID tidak valid." });
+    if (tiktokPixelId && !/^[A-Z0-9]{5,30}$/i.test(tiktokPixelId)) return res.status(400).json({ success: false, message: "TikTok Pixel ID tidak valid." });
+    if (socialImage) {
+      try { const url = new URL(socialImage); if (!["http:", "https:"].includes(url.protocol)) throw new Error(); }
+      catch { return res.status(400).json({ success: false, message: "Social image URL tidak valid." }); }
+    }
 
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
         seoTitle: clean(req.body.seoTitle, 70),
         seoDescription: clean(req.body.seoDescription, 160),
-        socialImage: clean(req.body.socialImage, 2048),
+        socialImage,
         customDomain,
-        googleAnalyticsId: clean(req.body.googleAnalyticsId, 30),
-        metaPixelId: clean(req.body.metaPixelId, 30),
-        tiktokPixelId: clean(req.body.tiktokPixelId, 30),
+        googleAnalyticsId,
+        metaPixelId,
+        tiktokPixelId,
       },
     });
     return res.status(200).json({ success: true, message: "Publishing settings diperbarui.", data: sanitizeUser(updated) });
