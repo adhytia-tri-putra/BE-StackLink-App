@@ -27,6 +27,8 @@ export interface SanitizedUser {
   googleAnalyticsId: string | null;
   metaPixelId: string | null;
   tiktokPixelId: string | null;
+  plan: string;
+  planStatus: string;
 }
 
 export interface UpdateProfileInput {

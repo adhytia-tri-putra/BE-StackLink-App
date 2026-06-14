@@ -13,6 +13,7 @@ import { getAllowedOrigins } from "./utils/env";
 import accountRoutes from "./routes/accountRoute";
 import prisma from "./config/prisma";
 import { requestLogger } from "./middleware/requestLogger";
+import billingRoutes from "./routes/billingRoute";
 
 const app = express();
 const allowedOrigins = getAllowedOrigins();
@@ -76,6 +77,7 @@ app.use("/api/links", linkRoute);
 app.use("/u", publicRoute);
 app.use("/api/qr", qrRoute);
 app.use("/api/analytics", analyticsRoute);
+app.use("/api/billing", billingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

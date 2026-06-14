@@ -42,12 +42,18 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
 
   try {
     const normalized = normalizeLinkInput(title, url);
+    const owner = await prisma.user.findUnique({ where: { id: req.user.sub }, select: { plan: true } });
+    const freeLimit = Math.max(1, Number(process.env.FREE_LINK_LIMIT || 5));
     const startDate = startsAt ? new Date(startsAt) : null;
     const endDate = endsAt ? new Date(endsAt) : null;
     if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime())) || (startDate && endDate && startDate >= endDate)) throw new Error("INVALID_SCHEDULE");
     const count = await prisma.link.count({
       where: { userId: req.user.sub },
     });
+    if (owner?.plan !== "PRO" && count >= freeLimit) {
+      res.status(403).json({ success: false, code: "PLAN_LIMIT_REACHED", message: `Paket Free dibatasi ${freeLimit} link. Upgrade ke Pro untuk link tanpa batas.` });
+      return;
+    }
 
     const link = await prisma.link.create({
       data: {

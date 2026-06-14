@@ -33,6 +33,9 @@ model User {
   googleAnalyticsId String? @map("google_analytics_id")
   metaPixelId       String? @map("meta_pixel_id")
   tiktokPixelId     String? @map("tiktok_pixel_id")
+  plan              String   @default("FREE")
+  planStatus        String   @default("ACTIVE") @map("plan_status")
+  billingCustomerId String?  @unique @map("billing_customer_id")
 
   links             Link[]
   sessions          Session[]

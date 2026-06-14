@@ -32,6 +32,8 @@ export function sanitizeUser(user: User): SanitizedUser {
     googleAnalyticsId: user.googleAnalyticsId,
     metaPixelId: user.metaPixelId,
     tiktokPixelId: user.tiktokPixelId,
+    plan: user.plan,
+    planStatus: user.planStatus,
   };
 }
 
