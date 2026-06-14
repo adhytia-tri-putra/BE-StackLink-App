@@ -36,13 +36,30 @@ model User {
   plan              String   @default("FREE")
   planStatus        String   @default("ACTIVE") @map("plan_status")
   billingCustomerId String?  @unique @map("billing_customer_id")
+  role              String   @default("USER")
+  suspendedAt       DateTime? @map("suspended_at")
 
   links             Link[]
   sessions          Session[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  reports           AbuseReport[]
 
   @@map("users")
+}
+
+model AbuseReport {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  reason    String
+  details   String?
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("abuse_reports")
 }
 
 model EmailVerificationToken {

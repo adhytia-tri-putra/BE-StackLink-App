@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { authenticate } from "../middleware/authMiddleware";
+import { requireAdmin } from "../middleware/adminMiddleware";
+import { getAdminOverview, resolveReport, updateAdminUser } from "../controllers/adminController";
+const router = Router();
+router.use(authenticate, requireAdmin);
+router.get("/overview", getAdminOverview);
+router.patch("/users/:id", updateAdminUser);
+router.patch("/reports/:id/resolve", resolveReport);
+export default router;

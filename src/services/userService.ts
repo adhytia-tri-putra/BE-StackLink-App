@@ -34,6 +34,8 @@ export function sanitizeUser(user: User): SanitizedUser {
     tiktokPixelId: user.tiktokPixelId,
     plan: user.plan,
     planStatus: user.planStatus,
+    role: user.role,
+    suspendedAt: user.suspendedAt?.toISOString() || null,
   };
 }
 
@@ -75,6 +77,7 @@ export async function createUser({
       bio,
       avatar,
       headline,
+      role: (process.env.ADMIN_EMAILS || "").split(",").map((item) => item.trim().toLowerCase()).includes(email.toLowerCase()) ? "ADMIN" : "USER",
     },
   });
 

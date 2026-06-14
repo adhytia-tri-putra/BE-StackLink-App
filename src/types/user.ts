@@ -29,6 +29,8 @@ export interface SanitizedUser {
   tiktokPixelId: string | null;
   plan: string;
   planStatus: string;
+  role: string;
+  suspendedAt: string | null;
 }
 
 export interface UpdateProfileInput {

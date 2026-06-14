@@ -85,6 +85,7 @@ export async function login(
     if (!userRecord.emailVerifiedAt) {
       return res.status(403).json({ success: false, message: "Verifikasi email terlebih dahulu sebelum login." });
     }
+    if (userRecord.suspendedAt) return res.status(403).json({ success: false, message: "Akun ini sedang disuspend." });
 
     const user = sanitizeUser(userRecord);
     const token = createAccessToken(user);

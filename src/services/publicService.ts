@@ -1,8 +1,8 @@
 import prisma from "../config/prisma";
 
 export async function findPublicProfileByUsername(username: string) {
-  return prisma.user.findUnique({
-    where: { username },
+  return prisma.user.findFirst({
+    where: { username, suspendedAt: null },
     select: {
       username: true,
       name: true,
@@ -46,7 +46,7 @@ export async function findPublicProfileByUsername(username: string) {
 }
 
 export async function findPublicProfileByDomain(domain: string) {
-  const user = await prisma.user.findUnique({ where: { customDomain: domain.toLowerCase() }, select: { username: true } });
+  const user = await prisma.user.findFirst({ where: { customDomain: domain.toLowerCase(), suspendedAt: null }, select: { username: true } });
   return user ? findPublicProfileByUsername(user.username) : null;
 }
 
