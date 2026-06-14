@@ -3,6 +3,9 @@ import { createAccessToken } from "../utils/jwt";
 import { checkPassword, createUser, findUserByEmail, sanitizeUser } from "../services/userService";
 import { createSession, deleteSession } from "../services/sessionService";
 import type { LoginInput, RegisterInput } from "../types/auth";
+import { createPasswordResetToken, resetPasswordWithToken } from "../services/passwordResetService";
+import { sendPasswordResetEmail } from "../services/emailService";
+import { getPrimaryFrontendUrl } from "../utils/env";
 
 export async function register(
   req: Request<unknown, unknown, RegisterInput>,
@@ -121,6 +124,64 @@ export async function logout(
       success: true,
       message: "Logout berhasil.",
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function forgotPassword(
+  req: Request<unknown, unknown, { email?: unknown }>,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> {
+  try {
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email wajib diisi." });
+    }
+
+    const user = await findUserByEmail(email);
+    let developmentToken: string | undefined;
+
+    if (user) {
+      const { token } = await createPasswordResetToken(user.id);
+      const resetUrl = `${getPrimaryFrontendUrl().replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
+      const sent = await sendPasswordResetEmail(user.email, resetUrl);
+      if (!sent && process.env.NODE_ENV !== "production") developmentToken = token;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Jika email terdaftar, instruksi reset password akan dikirim.",
+      ...(developmentToken ? { data: { developmentToken } } : {}),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function resetPassword(
+  req: Request<unknown, unknown, { token?: unknown; password?: unknown }>,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> {
+  try {
+    const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+    const password = typeof req.body.password === "string" ? req.body.password : "";
+
+    if (!token || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Token wajib diisi dan password minimal 8 karakter.",
+      });
+    }
+
+    const success = await resetPasswordWithToken(token, password);
+    if (!success) {
+      return res.status(400).json({ success: false, message: "Token reset tidak valid atau sudah kedaluwarsa." });
+    }
+
+    return res.status(200).json({ success: true, message: "Password berhasil diperbarui. Silakan login kembali." });
   } catch (error) {
     return next(error);
   }
