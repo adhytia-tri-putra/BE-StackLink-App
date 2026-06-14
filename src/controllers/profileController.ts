@@ -20,6 +20,16 @@ interface ThemeBody {
   buttonColor?: unknown;
 }
 
+interface PublishingBody {
+  seoTitle?: unknown;
+  seoDescription?: unknown;
+  socialImage?: unknown;
+  customDomain?: unknown;
+  googleAnalyticsId?: unknown;
+  metaPixelId?: unknown;
+  tiktokPixelId?: unknown;
+}
+
 function sanitizeProfileUpdateInput(body: ProfileBody): UpdateProfileInput {
   const payload: UpdateProfileInput = {};
 
@@ -269,6 +279,42 @@ export async function updateTheme(
       data: updatedTheme,
     });
   } catch (error) {
+    return next(error);
+  }
+}
+
+export async function updatePublishingSettings(
+  req: Request<Record<string, string>, unknown, PublishingBody>,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> {
+  try {
+    const userId = Number(req.user?.sub);
+    if (!userId) return res.status(401).json({ success: false, message: "Token tidak valid." });
+
+    const clean = (value: unknown, max: number) => value === null || value === "" ? null : typeof value === "string" ? value.trim().slice(0, max) : undefined;
+    const customDomain = clean(req.body.customDomain, 253)?.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "") || null;
+    if (customDomain && !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(customDomain)) {
+      return res.status(400).json({ success: false, message: "Custom domain tidak valid." });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        seoTitle: clean(req.body.seoTitle, 70),
+        seoDescription: clean(req.body.seoDescription, 160),
+        socialImage: clean(req.body.socialImage, 2048),
+        customDomain,
+        googleAnalyticsId: clean(req.body.googleAnalyticsId, 30),
+        metaPixelId: clean(req.body.metaPixelId, 30),
+        tiktokPixelId: clean(req.body.tiktokPixelId, 30),
+      },
+    });
+    return res.status(200).json({ success: true, message: "Publishing settings diperbarui.", data: sanitizeUser(updated) });
+  } catch (error) {
+    if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
+      return res.status(409).json({ success: false, message: "Custom domain sudah digunakan akun lain." });
+    }
     return next(error);
   }
 }

@@ -26,6 +26,13 @@ model User {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
   emailVerifiedAt   DateTime? @map("email_verified_at")
+  seoTitle          String?  @map("seo_title")
+  seoDescription    String?  @map("seo_description")
+  socialImage       String?  @map("social_image")
+  customDomain      String?  @unique @map("custom_domain")
+  googleAnalyticsId String? @map("google_analytics_id")
+  metaPixelId       String? @map("meta_pixel_id")
+  tiktokPixelId     String? @map("tiktok_pixel_id")
 
   links             Link[]
   sessions          Session[]
@@ -82,6 +89,8 @@ model Link {
   icon      String?
   position  Int         @default(0)
   isActive  Boolean     @default(true) @map("is_active")
+  startsAt  DateTime?   @map("starts_at")
+  endsAt    DateTime?   @map("ends_at")
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 

@@ -20,6 +20,13 @@ export interface SanitizedUser {
   textColor: string;
   buttonColor: string;
   createdAt: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  socialImage: string | null;
+  customDomain: string | null;
+  googleAnalyticsId: string | null;
+  metaPixelId: string | null;
+  tiktokPixelId: string | null;
 }
 
 export interface UpdateProfileInput {

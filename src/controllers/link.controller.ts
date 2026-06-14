@@ -33,7 +33,7 @@ export const getLinks = async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/links
 export const createLink = async (req: Request, res: Response): Promise<void> => {
-  const { title, url, icon }: CreateLinkInput = req.body;
+  const { title, url, icon, startsAt, endsAt }: CreateLinkInput = req.body;
 
   if (!title || !url) {
     res.status(400).json({ success: false, message: "Title dan URL wajib diisi" });
@@ -42,6 +42,9 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
 
   try {
     const normalized = normalizeLinkInput(title, url);
+    const startDate = startsAt ? new Date(startsAt) : null;
+    const endDate = endsAt ? new Date(endsAt) : null;
+    if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime())) || (startDate && endDate && startDate >= endDate)) throw new Error("INVALID_SCHEDULE");
     const count = await prisma.link.count({
       where: { userId: req.user.sub },
     });
@@ -53,6 +56,8 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
         url: normalized.url,
         icon: icon ?? null,
         position: count,
+        startsAt: startDate,
+        endsAt: endDate,
       },
     });
 
@@ -69,7 +74,7 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
 // PUT /api/links/:id
 export const updateLink = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id as string;
-  const { title, url, icon, isActive }: UpdateLinkInput = req.body;
+  const { title, url, icon, isActive, startsAt, endsAt }: UpdateLinkInput = req.body;
 
   try {
     const existing = await prisma.link.findFirst({
@@ -84,6 +89,9 @@ export const updateLink = async (req: Request, res: Response): Promise<void> => 
     const normalized = title !== undefined || url !== undefined
       ? normalizeLinkInput(title ?? existing.title, url ?? existing.url)
       : null;
+    const startDate = startsAt === undefined ? existing.startsAt : startsAt ? new Date(startsAt) : null;
+    const endDate = endsAt === undefined ? existing.endsAt : endsAt ? new Date(endsAt) : null;
+    if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime())) || (startDate && endDate && startDate >= endDate)) throw new Error("INVALID_SCHEDULE");
     const updated = await prisma.link.update({
       where: { id },
       data: {
@@ -91,6 +99,8 @@ export const updateLink = async (req: Request, res: Response): Promise<void> => 
         ...(url !== undefined && { url: normalized?.url }),
         ...(icon !== undefined && { icon }),
         ...(isActive !== undefined && { isActive }),
+        ...(startsAt !== undefined && { startsAt: startDate }),
+        ...(endsAt !== undefined && { endsAt: endDate }),
       },
     });
 

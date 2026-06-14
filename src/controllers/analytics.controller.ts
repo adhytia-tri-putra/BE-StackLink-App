@@ -67,6 +67,30 @@ export async function getAnalyticsSummaryHandler(
   }
 }
 
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export async function exportAnalyticsCsvHandler(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const userId = Number(req.user?.sub);
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const period = normalizeAnalyticsPeriod(req.query.period);
+    const data = await getAnalyticsSummary(userId, period);
+    const rows = [
+      ["Link", "URL", "Active", "Clicks", "Unique visitors", "Last clicked"],
+      ...data.links.map((link) => [link.title, link.url, link.isActive, link.totalClicks, link.uniqueVisitors, link.lastClickedAt]),
+    ];
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="stacklink-analytics-${period}.csv"`);
+    return res.status(200).send(csv);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function createAnalyticsStreamHandler(
   req: Request,
   res: Response,

@@ -25,6 +25,13 @@ export function sanitizeUser(user: User): SanitizedUser {
     textColor: user.textColor,
     buttonColor: user.buttonColor,
     createdAt: user.createdAt.toISOString(),
+    seoTitle: user.seoTitle,
+    seoDescription: user.seoDescription,
+    socialImage: user.socialImage,
+    customDomain: user.customDomain,
+    googleAnalyticsId: user.googleAnalyticsId,
+    metaPixelId: user.metaPixelId,
+    tiktokPixelId: user.tiktokPixelId,
   };
 }
 

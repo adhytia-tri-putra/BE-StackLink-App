@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { findPublicProfileByUsername, findPublicLinkByIdAndUsername } from "../services/publicService";
+import { findPublicProfileByDomain, findPublicProfileByUsername, findPublicLinkByIdAndUsername } from "../services/publicService";
 
 export async function getPublicProfile(
   req: Request<{ username: string }>,
@@ -23,6 +23,16 @@ export async function getPublicProfile(
       message: "Profil berhasil diambil.",
       data: profile,
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getPublicProfileByDomain(req: Request<{ domain: string }>, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const profile = await findPublicProfileByDomain(req.params.domain);
+    if (!profile) return res.status(404).json({ success: false, message: "Domain belum terhubung." });
+    return res.status(200).json({ success: true, message: "Profil berhasil diambil.", data: profile });
   } catch (error) {
     return next(error);
   }

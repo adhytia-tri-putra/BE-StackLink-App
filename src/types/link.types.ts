@@ -8,12 +8,16 @@ export interface Link {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  startsAt: Date | null;
+  endsAt: Date | null;
 }
 
 export interface CreateLinkInput {
   title: string;
   url: string;
   icon?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface UpdateLinkInput {
@@ -21,6 +25,8 @@ export interface UpdateLinkInput {
   url?: string;
   icon?: string | null;
   isActive?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface ReorderLinkItem {
