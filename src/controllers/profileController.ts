@@ -160,6 +160,9 @@ export async function updateMyProfile(
         message: "Nama minimal 2 karakter.",
       });
     }
+    if (payload.name && payload.name.length > 80) return res.status(400).json({ success: false, message: "Nama maksimal 80 karakter." });
+    if (payload.bio && payload.bio.length > 150) return res.status(400).json({ success: false, message: "Bio maksimal 150 karakter." });
+    if (payload.headline && payload.headline.length > 100) return res.status(400).json({ success: false, message: "Headline maksimal 100 karakter." });
 
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({

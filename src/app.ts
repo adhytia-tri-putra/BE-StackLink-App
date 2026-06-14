@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware";
 import authRoutes from "./routes/authRoute";
 import profileRoutes from "./routes/profileRoute";
@@ -13,6 +14,9 @@ import accountRoutes from "./routes/accountRoute";
 
 const app = express();
 const allowedOrigins = getAllowedOrigins();
+
+app.set("trust proxy", 1);
+app.use(helmet());
 
 const isLocalhostOrigin = (origin: string) => origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
 const isDevTunnelOrigin = (origin: string) => origin.endsWith(".devtunnels.ms") || origin.includes(".devtunnels.ms");
@@ -34,7 +38,7 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({ limit: "6mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

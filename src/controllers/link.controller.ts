@@ -7,6 +7,16 @@ import type {
   ReorderLinkItem,
 } from "../types/link.types";
 
+function normalizeLinkInput(title: unknown, url: unknown) {
+  const cleanTitle = typeof title === "string" ? title.trim() : "";
+  const cleanUrl = typeof url === "string" ? url.trim() : "";
+  if (!cleanTitle || cleanTitle.length > 100) throw new Error("INVALID_TITLE");
+  if (cleanUrl.length > 2048) throw new Error("INVALID_URL");
+  const parsed = new URL(cleanUrl);
+  if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("INVALID_URL");
+  return { title: cleanTitle, url: parsed.toString() };
+}
+
 // GET /api/links
 export const getLinks = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -31,6 +41,7 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
   }
 
   try {
+    const normalized = normalizeLinkInput(title, url);
     const count = await prisma.link.count({
       where: { userId: req.user.sub },
     });
@@ -38,8 +49,8 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
     const link = await prisma.link.create({
       data: {
         userId: req.user.sub,
-        title,
-        url,
+        title: normalized.title,
+        url: normalized.url,
         icon: icon ?? null,
         position: count,
       },
@@ -47,6 +58,10 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
 
     res.status(201).json({ success: true, data: link });
   } catch (err) {
+    if ((err as Error).message.startsWith("INVALID_")) {
+      res.status(400).json({ success: false, message: "Judul atau URL link tidak valid." });
+      return;
+    }
     res.status(500).json({ success: false, message: (err as Error).message });
   }
 };
@@ -66,11 +81,14 @@ export const updateLink = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    const normalized = title !== undefined || url !== undefined
+      ? normalizeLinkInput(title ?? existing.title, url ?? existing.url)
+      : null;
     const updated = await prisma.link.update({
       where: { id },
       data: {
-        ...(title !== undefined && { title }),
-        ...(url !== undefined && { url }),
+        ...(title !== undefined && { title: normalized?.title }),
+        ...(url !== undefined && { url: normalized?.url }),
         ...(icon !== undefined && { icon }),
         ...(isActive !== undefined && { isActive }),
       },
@@ -78,6 +96,10 @@ export const updateLink = async (req: Request, res: Response): Promise<void> => 
 
     res.json({ success: true, data: updated });
   } catch (err) {
+    if ((err as Error).message.startsWith("INVALID_")) {
+      res.status(400).json({ success: false, message: "Judul atau URL link tidak valid." });
+      return;
+    }
     res.status(500).json({ success: false, message: (err as Error).message });
   }
 };

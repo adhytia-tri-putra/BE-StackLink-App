@@ -32,10 +32,14 @@ export function validateRegisterInput(
   if (!username || typeof username !== "string" || username.trim().length < 3) {
     return sendValidationError(res, "Username wajib diisi minimal 3 karakter.");
   }
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,29}$/.test(username.trim())) {
+    return sendValidationError(res, "Username hanya boleh berisi huruf, angka, _ atau - dan maksimal 30 karakter.");
+  }
 
   if (!name || typeof name !== "string" || name.trim().length < 2) {
     return sendValidationError(res, "Nama wajib diisi minimal 2 karakter.");
   }
+  if (name.trim().length > 80) return sendValidationError(res, "Nama maksimal 80 karakter.");
 
   if (!email || typeof email !== "string") {
     return sendValidationError(res, "Email wajib diisi.");
@@ -46,9 +50,12 @@ export function validateRegisterInput(
     return sendValidationError(res, "Format email tidak valid.");
   }
 
-  if (!password || typeof password !== "string" || password.length < 6) {
-    return sendValidationError(res, "Password minimal 6 karakter.");
+  if (!password || typeof password !== "string" || password.length < 8) {
+    return sendValidationError(res, "Password minimal 8 karakter.");
   }
+
+  if (bio && String(bio).trim().length > 150) return sendValidationError(res, "Bio maksimal 150 karakter.");
+  if (headline && String(headline).trim().length > 100) return sendValidationError(res, "Headline maksimal 100 karakter.");
 
   req.body.username = username.trim();
   req.body.name = name.trim();
