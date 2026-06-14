@@ -128,6 +128,8 @@ export async function getMyPreviewProfile(
             icon: true,
             position: true,
             isActive: true,
+            blockType: true,
+            description: true,
           },
         },
       },

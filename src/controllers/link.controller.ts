@@ -17,6 +17,9 @@ function normalizeLinkInput(title: unknown, url: unknown) {
   return { title: cleanTitle, url: parsed.toString() };
 }
 
+const BLOCK_TYPES = new Set(["LINK", "YOUTUBE", "SPOTIFY", "SOCIAL", "HEADING", "DIVIDER", "CONTACT", "DONATION"]);
+function normalizeBlockType(value: unknown) { const type = typeof value === "string" ? value.toUpperCase() : "LINK"; if (!BLOCK_TYPES.has(type)) throw new Error("INVALID_BLOCK_TYPE"); return type; }
+
 // GET /api/links
 export const getLinks = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -33,15 +36,17 @@ export const getLinks = async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/links
 export const createLink = async (req: Request, res: Response): Promise<void> => {
-  const { title, url, icon, startsAt, endsAt }: CreateLinkInput = req.body;
+  const { title, url, icon, startsAt, endsAt, blockType, description }: CreateLinkInput = req.body;
+  const requestedType = typeof blockType === "string" ? blockType.toUpperCase() : "LINK";
 
-  if (!title || !url) {
+  if (!title || (!url && !["HEADING", "DIVIDER"].includes(requestedType))) {
     res.status(400).json({ success: false, message: "Title dan URL wajib diisi" });
     return;
   }
 
   try {
-    const normalized = normalizeLinkInput(title, url);
+    const type = normalizeBlockType(requestedType);
+    const normalized = normalizeLinkInput(title, url || "https://stacklink.local/");
     const owner = await prisma.user.findUnique({ where: { id: req.user.sub }, select: { plan: true } });
     const freeLimit = Math.max(1, Number(process.env.FREE_LINK_LIMIT || 5));
     const startDate = startsAt ? new Date(startsAt) : null;
@@ -64,6 +69,8 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
         position: count,
         startsAt: startDate,
         endsAt: endDate,
+        blockType: type,
+        description: typeof description === "string" ? description.trim().slice(0, 300) || null : null,
       },
     });
 
@@ -80,7 +87,7 @@ export const createLink = async (req: Request, res: Response): Promise<void> => 
 // PUT /api/links/:id
 export const updateLink = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id as string;
-  const { title, url, icon, isActive, startsAt, endsAt }: UpdateLinkInput = req.body;
+  const { title, url, icon, isActive, startsAt, endsAt, blockType, description }: UpdateLinkInput = req.body;
 
   try {
     const existing = await prisma.link.findFirst({
@@ -107,6 +114,8 @@ export const updateLink = async (req: Request, res: Response): Promise<void> => 
         ...(isActive !== undefined && { isActive }),
         ...(startsAt !== undefined && { startsAt: startDate }),
         ...(endsAt !== undefined && { endsAt: endDate }),
+        ...(blockType !== undefined && { blockType: normalizeBlockType(blockType) }),
+        ...(description !== undefined && { description: description?.trim().slice(0, 300) || null }),
       },
     });
 

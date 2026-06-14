@@ -111,6 +111,8 @@ model Link {
   isActive  Boolean     @default(true) @map("is_active")
   startsAt  DateTime?   @map("starts_at")
   endsAt    DateTime?   @map("ends_at")
+  blockType String      @default("LINK") @map("block_type")
+  description String?
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 

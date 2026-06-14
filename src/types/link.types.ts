@@ -10,6 +10,8 @@ export interface Link {
   updatedAt: Date;
   startsAt: Date | null;
   endsAt: Date | null;
+  blockType: string;
+  description: string | null;
 }
 
 export interface CreateLinkInput {
@@ -18,6 +20,8 @@ export interface CreateLinkInput {
   icon?: string | null;
   startsAt?: string | null;
   endsAt?: string | null;
+  blockType?: string;
+  description?: string | null;
 }
 
 export interface UpdateLinkInput {
@@ -27,6 +31,8 @@ export interface UpdateLinkInput {
   isActive?: boolean;
   startsAt?: string | null;
   endsAt?: string | null;
+  blockType?: string;
+  description?: string | null;
 }
 
 export interface ReorderLinkItem {

@@ -1,0 +1,2 @@
+ALTER TABLE "links" ADD COLUMN "block_type" TEXT NOT NULL DEFAULT 'LINK';
+ALTER TABLE "links" ADD COLUMN "description" TEXT;

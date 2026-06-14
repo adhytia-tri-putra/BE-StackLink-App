@@ -39,6 +39,8 @@ export async function findPublicProfileByUsername(username: string) {
           position: true,
           startsAt: true,
           endsAt: true,
+          blockType: true,
+          description: true,
         },
       },
     },
@@ -70,6 +72,8 @@ export async function findPublicLinkByIdAndUsername(id: string, username: string
       icon: true,
       position: true,
       createdAt: true,
+      blockType: true,
+      description: true,
       user: {
         select: {
           username: true,
