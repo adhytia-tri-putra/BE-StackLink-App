@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { findUserById, sanitizeUser, updateUser } from "../services/userService";
 import type { UpdateProfileInput, UpdateThemeInput } from "../types/user";
 import prisma from "../config/prisma";
-import { storeAvatar } from "../services/avatarStorageService";
+import { deleteStoredAvatar, storeAvatar } from "../services/avatarStorageService";
 
 interface ProfileBody {
   name?: unknown;
@@ -172,7 +172,15 @@ export async function updateMyProfile(
       });
     }
 
-    if (payload.avatar) payload.avatar = await storeAvatar(Number(userId), payload.avatar);
+    if (payload.avatar?.startsWith("data:")) {
+      const currentUser = await findUserById(Number(userId));
+      const previousAvatar = currentUser?.avatar;
+      payload.avatar = await storeAvatar(Number(userId), payload.avatar);
+      await deleteStoredAvatar(previousAvatar);
+    } else if (payload.avatar === null) {
+      const currentUser = await findUserById(Number(userId));
+      await deleteStoredAvatar(currentUser?.avatar);
+    }
 
     const updatedUser = await updateUser(userId, payload);
 

@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import prisma from "../config/prisma";
 import { checkPassword, findUserById, sanitizeUser } from "../services/userService";
 import { deleteUserSessions } from "../services/sessionService";
+import { createEmailVerificationToken } from "../services/emailVerificationService";
+import { sendEmailVerification } from "../services/emailService";
+import { getPrimaryFrontendUrl } from "../utils/env";
+import { deleteStoredAvatar } from "../services/avatarStorageService";
 
 function getUserId(req: Request): number | null {
   const userId = Number(req.user?.sub);
@@ -26,11 +30,25 @@ export async function updateAccount(
       return res.status(400).json({ success: false, message: "Username harus 3-30 karakter dan hanya berisi huruf kecil, angka, _ atau -." });
     }
 
+    const currentUser = await findUserById(userId);
+    const emailChanged = Boolean(email && currentUser && email !== currentUser.email);
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { ...(email ? { email } : {}), ...(username ? { username } : {}) },
+      data: { ...(email ? { email } : {}), ...(username ? { username } : {}), ...(emailChanged ? { emailVerifiedAt: null } : {}) },
     });
-    return res.status(200).json({ success: true, message: "Akun berhasil diperbarui.", data: sanitizeUser(user) });
+    let developmentToken: string | undefined;
+    if (emailChanged) {
+      await deleteUserSessions(userId);
+      const token = await createEmailVerificationToken(userId);
+      const url = `${getPrimaryFrontendUrl().replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
+      const sent = await sendEmailVerification(user.email, url);
+      if (!sent && process.env.NODE_ENV !== "production") developmentToken = token;
+    }
+    return res.status(200).json({
+      success: true,
+      message: emailChanged ? "Email diperbarui. Verifikasi email baru sebelum login kembali." : "Akun berhasil diperbarui.",
+      data: { user: sanitizeUser(user), requiresVerification: emailChanged, ...(developmentToken ? { developmentToken } : {}) },
+    });
   } catch (error) {
     if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
       return res.status(409).json({ success: false, message: "Email atau username sudah digunakan." });
@@ -92,6 +110,7 @@ export async function deleteAccount(
       return res.status(400).json({ success: false, message: "Password salah." });
     }
 
+    await deleteStoredAvatar(user.avatar);
     await prisma.user.delete({ where: { id: userId } });
     return res.status(200).json({ success: true, message: "Akun berhasil dihapus." });
   } catch (error) {

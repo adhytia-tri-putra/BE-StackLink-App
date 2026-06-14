@@ -11,6 +11,7 @@ export function sanitizeUser(user: User): SanitizedUser {
     username: user.username,
     name: user.name,
     email: user.email,
+    emailVerifiedAt: user.emailVerifiedAt?.toISOString() || null,
     profile: {
       id: `profile-${user.id}`,
       bio: user.bio || null,

@@ -126,6 +126,34 @@ export async function verifyEmail(
   }
 }
 
+export async function resendVerification(
+  req: Request<unknown, unknown, { email?: unknown }>,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> {
+  try {
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!email) return res.status(400).json({ success: false, message: "Email wajib diisi." });
+
+    const user = await findUserByEmail(email);
+    let developmentToken: string | undefined;
+    if (user && !user.emailVerifiedAt) {
+      const token = await createEmailVerificationToken(user.id);
+      const url = `${getPrimaryFrontendUrl().replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
+      const sent = await sendEmailVerification(user.email, url);
+      if (!sent && process.env.NODE_ENV !== "production") developmentToken = token;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Jika akun memerlukan verifikasi, email baru akan dikirim.",
+      ...(developmentToken ? { data: { developmentToken } } : {}),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function logout(
   req: Request,
   res: Response,

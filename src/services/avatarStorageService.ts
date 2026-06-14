@@ -45,3 +45,22 @@ export async function storeAvatar(userId: number, avatar: string): Promise<strin
 
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
 }
+
+export async function deleteStoredAvatar(avatarUrl?: string | null): Promise<void> {
+  if (!avatarUrl) return;
+  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const bucket = process.env.SUPABASE_AVATAR_BUCKET || "avatars";
+  if (!supabaseUrl || !secretKey || !avatarUrl.startsWith(`${supabaseUrl}/storage/v1/object/public/${bucket}/`)) return;
+
+  const path = avatarUrl.slice(`${supabaseUrl}/storage/v1/object/public/${bucket}/`.length);
+  await fetch(`${supabaseUrl}/storage/v1/object/${bucket}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      apikey: secretKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prefixes: [path] }),
+  });
+}

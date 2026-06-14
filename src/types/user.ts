@@ -11,6 +11,7 @@ export interface SanitizedUser {
   username: string;
   name: string;
   email: string;
+  emailVerifiedAt: string | null;
   profile: UserProfile;
   bgType: string;
   bgColor: string;
